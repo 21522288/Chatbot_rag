@@ -1,3 +1,6 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 # from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 # from dotenv import load_dotenv
