@@ -1,3 +1,6 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 import argparse
 from langchain_community.vectorstores import Chroma
 from langchain.prompts import ChatPromptTemplate
@@ -11,9 +14,9 @@ import os
 load_dotenv()
 # os.environ["HUGGINGFACEHUB_API_TOKEN"] = HUGGINGFACEHUB_API_TOKEN
 os.environ["HUGGINGFACEHUB_API_TOKEN"] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-llm = HuggingFaceHub(repo_id = 'mistralai/Mixtral-8x7B-Instruct-v0.1',model_kwargs={'temprature':0.5, 'max_length':500})
+llm = HuggingFaceHub(repo_id = os.getenv("MODEL_NAME"),model_kwargs={'temprature':0.5, 'max_length':2048})
 
-CHROMA_PATH = "chroma"
+CHROMA_PATH = os.getenv("CHROMA_PATH")
 
 PROMPT_TEMPLATE = """
 Context: {context}
@@ -54,7 +57,7 @@ def query_rag(query_text: str):
     answer = response_text.split("Answer the question based on above context:")[-1].strip()
     sources = [doc.metadata.get("id", None) for doc, _score in results]
     formatted_response = f"Response: {response_text}\nSources: {sources}"
-    print(answer)
+    print(formatted_response)
     return response_text
 
 
