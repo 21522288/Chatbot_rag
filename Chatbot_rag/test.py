@@ -1,12 +1,13 @@
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 from querydata import query_rag
-# from langchain_community.llms import NLPCloud
-# llm = NLPCloud(nlpcloud_api_key="e4c513eeddeda22f6e014b7a39c1124b82c9f668")
 from dotenv import load_dotenv
 from langchain import HuggingFaceHub, PromptTemplate, LLMChain
 import os
 load_dotenv()
 os.environ["HUGGINGFACEHUB_API_TOKEN"] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-llm = HuggingFaceHub(repo_id = 'mistralai/Mixtral-8x7B-Instruct-v0.1',model_kwargs={'temprature':0.5, 'max_length':500})
+llm = HuggingFaceHub(repo_id = os.getenv("MODEL_NAME"),model_kwargs={'temprature':0.5, 'max_length':2048})
 
 EVAL_PROMPT = """
 Expected Response: {expected_response}
@@ -46,6 +47,8 @@ def test_5():
 
 def query_and_validate(question: str, expected_response: str):
     response_text = query_rag(question)
+    print("Response from model:")
+    print(response_text)
     prompt = EVAL_PROMPT.format(
         expected_response=expected_response, actual_response=response_text
     )
