@@ -1,13 +1,25 @@
+# Core dependencies
 langchain>=0.1.0
 langchain-community>=0.0.10
-langchain-core>=0.1.0
-openai>=1.1.0
+langchain-text-splitters>=0.0.1
 python-dotenv>=1.0.0
-chromadb>=0.4.0
-tiktoken>=0.5.0
-fastapi>=0.100.0
-uvicorn>=0.23.0
-pydantic>=2.0.0
-huggingface-hub>=0.19.0
-fastembed>=0.1.0
-pysqlite3-binary>=0.5.0 
+pysqlite3-binary>=0.5.2
+
+# Document processing
+pypdf>=3.17.0
+python-magic>=0.4.27
+
+# Embeddings and vector store
+chromadb>=0.4.22
+sentence-transformers>=2.2.2
+
+# Machine Learning
+huggingface-hub>=0.20.2
+
+# Database
+pysqlite3-binary>=0.5.2  # Ensure newer SQLite3 version
+
+# Utilities
+python-dotenv>=1.0.0
+typing-extensions>=4.8.0
+loguru>=0.7.2 
