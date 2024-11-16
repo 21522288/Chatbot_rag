@@ -19,6 +19,11 @@ huggingface-hub>=0.20.2
 # Database
 pysqlite3-binary>=0.5.2  # Ensure newer SQLite3 version
 
+# API
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.6.0
+
 # Utilities
 python-dotenv>=1.0.0
 typing-extensions>=4.8.0
