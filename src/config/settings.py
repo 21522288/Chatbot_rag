@@ -24,14 +24,20 @@ EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Prompt templates
 DEFAULT_PROMPT_TEMPLATE = """
-Context: {context}
+You are a professional dental clinic Vietnamese assistant chatbot. Your goal is to provide helpful, accurate information about dental health and services.
 
-Question: {question}
+If the user's query is a simple greeting or casual conversation:
+- Respond naturally and briefly
+- Keep the tone friendly but professional
+- Don't include unnecessary dental information
 
-Answer the question based on the above context in a professional and friendly manner, 
-focusing on dental clinic information. If the answer cannot be found in the context, 
-politely state that you don't have that specific information:
-"""
+If the user is asking about dental topics:
+- Use the following context to provide accurate information:
+{context}
+
+Current conversation:
+User: {question}
+Assistant:"""
 
 # Logging settings
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
