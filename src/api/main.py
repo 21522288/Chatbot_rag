@@ -1,7 +1,8 @@
 """FastAPI application for the dental clinic chatbot."""
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -65,18 +66,31 @@ async def generate_streaming_response(query: str, k: int = 5):
         logger.error(f"Error generating response: {str(e)}")
         yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
-@app.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
+@app.post("/api/chat/stream")
+async def chat_stream(request: Request):
     """
     Streaming chat endpoint.
     Returns a server-sent events stream with the chatbot's response and sources.
     """
-    return StreamingResponse(
-        generate_streaming_response(request.query, request.k),
-        media_type="text/event-stream"
-    )
+    try:
+        # Parse the JSON body manually
+        body = await request.json()
+        chat_request = ChatRequest(**body)
+        
+        return StreamingResponse(
+            generate_streaming_response(chat_request.query, chat_request.k),
+            media_type="text/event-stream",
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Content-Type': 'text/event-stream',
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error in chat stream endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/chat")
+@app.post("/api/chat")
 async def chat(request: ChatRequest):
     """
     Regular chat endpoint.
@@ -92,7 +106,7 @@ async def chat(request: ChatRequest):
         logger.error(f"Error in chat endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/sources")
+@app.post("/api/sources")
 async def get_sources(request: ChatRequest) -> List[SourceResponse]:
     """
     Get relevant sources for a query without generating a response.
@@ -104,7 +118,10 @@ async def get_sources(request: ChatRequest) -> List[SourceResponse]:
         logger.error(f"Error in sources endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy"} 
+    return {"status": "healthy"}
+
+# Mount static files after all API routes are defined
+app.mount("/", StaticFiles(directory="static", html=True), name="static") 
