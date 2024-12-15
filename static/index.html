@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dental Clinic Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Add marked.js for markdown support -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 180px);
+        }
+        .message {
+            max-width: 80%;
+            margin: 8px 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .message p {
+            margin-bottom: 0.1rem;
+            line-height: 1.0;
+        }
+        .message p:last-child {
+            margin-bottom: 0;
+        }
+        .message ul, .message ol {
+            margin: 0.1rem 0;
+            padding-left: 1.25rem;
+        }
+        .message li {
+            margin: 0.1rem 0;
+        }
+        .message strong {
+            font-weight: 600;
+        }
+        .message em {
+            font-style: italic;
+        }
+        .user-message {
+            background-color: #e2e8f0;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #f3f4f6;
+            margin-right: auto;
+        }
+        .bot-message-content {
+            color: #1a202c;
+            font-size: 0.95rem;
+        }
+        .sources-container {
+            font-size: 0.875rem;
+            margin-top: 8px;
+            padding: 8px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            display: none;
+        }
+        .sources-container.show {
+            display: block;
+        }
+        .typing-indicator {
+            display: inline-flex;
+            align-items: center;
+            margin: 8px 0;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            margin: 0 2px;
+            background-color: #a0aec0;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        .source-button {
+            font-size: 0.75rem;
+            color: #4b5563;
+            padding: 4px 8px;
+            margin-top: 4px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        .source-button:hover {
+            background-color: #d1d5db;
+        }
+        code {
+            background-color: #edf2f7;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        pre code {
+            display: block;
+            padding: 1em;
+            overflow-x: auto;
+            line-height: 1.5;
+            margin: 0.5em 0;
+        }
+        .message ul + p, .message ol + p {
+            margin-top: 0.5rem;
+            padding-left: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Dental Clinic Chatbot</h1>
+        
+        <!-- Chat messages container -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-4">
+            <div id="chat-messages" class="chat-container overflow-y-auto">
+                <div class="bot-message message">
+                    <div class="bot-message-content">Xin chào! Tôi là bác sĩ răng hàm mặt của Nha khoa BestSmile. Tôi có thể giúp bạn gì?</div>
+                </div>
+            </div>
+            
+            <!-- Input form -->
+            <form id="chat-form" class="mt-4 flex gap-2">
+                <input 
+                    type="text" 
+                    id="user-input" 
+                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Type your message here..."
+                    required
+                >
+                <button 
+                    type="submit" 
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    Send
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Configure marked.js options
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            mangle: false
+        });
+
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const userInput = document.getElementById('user-input');
+        let currentBotMessage = null;
+        let currentSourcesContainer = null;
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            
+            if (isUser) {
+                messageDiv.textContent = content;
+            } else {
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'bot-message-content';
+                contentDiv.innerHTML = marked.parse(content);
+                messageDiv.appendChild(contentDiv);
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        }
+
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator bot-message message';
+            indicator.innerHTML = `
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            `;
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return indicator;
+        }
+
+        function addSources(sources) {
+            if (!Array.isArray(sources) || sources.length === 0) return;
+            
+            const wrapper = document.createElement('div');
+            wrapper.style.marginTop = '4px';
+            
+            const sourceButton = document.createElement('button');
+            sourceButton.className = 'source-button';
+            sourceButton.textContent = 'Show Sources';
+            sourceButton.onclick = () => {
+                sourcesDiv.classList.toggle('show');
+                sourceButton.textContent = sourcesDiv.classList.contains('show') ? 'Hide Sources' : 'Show Sources';
+            };
+            wrapper.appendChild(sourceButton);
+            
+            const sourcesDiv = document.createElement('div');
+            sourcesDiv.className = 'sources-container';
+            sourcesDiv.innerHTML = `
+                <div class="font-semibold mb-2">Sources:</div>
+                ${sources.map(source => `
+                    <div class="mb-2 p-2 border-l-2 border-gray-200">
+                        <div class="text-gray-600">${source.source || 'Unknown source'}${source.page ? ` - Page ${source.page}` : ''}</div>
+                        <div class="text-sm mt-1">${source.content || 'No content available'}</div>
+                    </div>
+                `).join('')}
+            `;
+            wrapper.appendChild(sourcesDiv);
+            
+            if (currentBotMessage) {
+                currentBotMessage.appendChild(wrapper);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, true);
+            userInput.value = '';
+
+            // Show typing indicator
+            const typingIndicator = showTypingIndicator();
+            let responseText = '';
+            
+            try {
+                // Create a new EventSource with POST method using a fetch request
+                const response = await fetch('/api/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        query: message,
+                        k: 5
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                currentBotMessage = null;
+
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'token') {
+                                    if (!currentBotMessage) {
+                                        typingIndicator.remove();
+                                        currentBotMessage = addMessage('');
+                                    }
+                                    responseText += data.content;
+                                    currentBotMessage.querySelector('.bot-message-content').innerHTML = marked.parse(responseText);
+                                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                                } 
+                                else if (data.type === 'sources') {
+                                    addSources(data.content);
+                                }
+                                else if (data.type === 'error') {
+                                    typingIndicator.remove();
+                                    addMessage(`Error: ${data.content}`);
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE data:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                typingIndicator.remove();
+                addMessage(`Error: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html> 

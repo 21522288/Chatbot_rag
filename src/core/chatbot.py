@@ -103,10 +103,12 @@ class DentalChatbot:
         if "Assistant:" in response:
             response = response.split("Assistant:", 1)[1]
             
-        # Clean up any extra whitespace and formatting
-        response = re.sub(r'\s+', ' ', response)
-        final_response = response.strip()
-        return final_response
+        # Clean up extra whitespace while preserving newlines
+        lines = response.split('\n')
+        lines = [re.sub(r'\s+', ' ', line).strip() for line in lines]
+        final_response = '\n'.join(filter(None, lines))
+        
+        return final_response.strip()
         
     def get_response(
         self, 
