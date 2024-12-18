@@ -8,6 +8,7 @@ pysqlite3-binary>=0.5.2
 # Document processing
 pypdf>=3.17.0
 python-magic>=0.4.27
+beautifulsoup4>=4.12.0
 
 # Embeddings and vector store
 chromadb>=0.4.22
@@ -23,6 +24,10 @@ pysqlite3-binary>=0.5.2  # Ensure newer SQLite3 version
 fastapi>=0.109.0
 uvicorn>=0.27.0
 pydantic>=2.6.0
+
+# Web Scraping
+selenium>=4.16.0
+webdriver-manager>=4.0.1
 
 # Utilities
 python-dotenv>=1.0.0

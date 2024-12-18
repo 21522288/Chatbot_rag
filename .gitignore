@@ -54,3 +54,4 @@ coverage.xml
 *.cover
 
 **/*.pdf
+Dockerfile
