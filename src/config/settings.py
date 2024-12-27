@@ -20,7 +20,7 @@ CHUNK_SIZE = 800
 CHUNK_OVERLAP = 80
 
 # Vector store settings
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
 # Prompt templates
 DEFAULT_PROMPT_TEMPLATE = '''

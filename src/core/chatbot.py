@@ -142,6 +142,7 @@ class DentalChatbot:
         try:
             raw_response = self.llm.invoke(prompt)
             processed_response = self._process_response(raw_response)
+            logger.info(f"Raw response: {raw_response}")
             
             sources = [
                 {
