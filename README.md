@@ -23,7 +23,10 @@ Start the FastAPI server:
 python src/run_server.py
 ```
 
-The API will be available at `http://localhost:8000`. You can access the interactive API documentation at `http://localhost:8000/docs`.
+From now, you can access:
+- Demo Chat UI: `http://localhost:8000/`
+- API: `http://localhost:8000/api`
+- Interactive API documentation: `http://localhost:8000/docs`
 
 ## API Endpoints
 
