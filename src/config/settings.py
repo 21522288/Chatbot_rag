@@ -22,6 +22,10 @@ CHUNK_OVERLAP = 80
 # Vector store settings
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 
+# Memory settings
+MEMORY_KEY = "chat_history"
+MEMORY_WINDOW_SIZE = 5  # Number of previous conversations to remember
+
 # Prompt templates
 DEFAULT_PROMPT_TEMPLATE = '''
 You are a professional dental clinic Vietnamese assistant chatbot. Your goal is to provide helpful, accurate information about dental health and services.\n\n
@@ -41,6 +45,9 @@ Important formatting instructions:\n
    - Use "## " for section headings followed by "\\n"
    - Use **bold** for important terms
    - Use *italic* for emphasis\n
+
+Previous conversation history:
+{chat_history}\n\n
 
 If the user's query is a simple greeting or casual conversation:
 - Respond naturally and briefly
@@ -65,6 +72,19 @@ Current conversation:
 User: {question}
 Assistant:'''
 
+# Classification prompt for appointment-related queries
+APPOINTMENT_CLASSIFICATION_PROMPT = """
+Determine if the following query is related to dental appointments (booking, scheduling, checking, or canceling appointments).
+Consider both Vietnamese and English queries.
+
+Query: {query}
+
+Return only "yes" if it's appointment-related, or "no" if it's not.
+"""
+
 # Logging settings
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>" 
+LOG_FORMAT = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+
+# Backend API configuration
+BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:7132") 

@@ -47,7 +47,7 @@ async def generate_streaming_response(query: str, k: int = 5):
     """Generate streaming response for chat endpoint."""
     try:
         # Get the token generator
-        token_generator = chatbot.get_response(query, k=k, streaming=True)
+        token_generator = await chatbot.get_response(query, k=k, streaming=True)
         response_text = ""
         
         # Stream tokens as they're generated
@@ -56,7 +56,7 @@ async def generate_streaming_response(query: str, k: int = 5):
             yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
         
         # After streaming is complete, get sources
-        _, sources = chatbot.get_response(query, k=k, streaming=False)
+        response, sources = await chatbot.get_response(query, k=k, streaming=False)
         
         # Send the complete response and sources
         yield f"data: {json.dumps({'type': 'complete', 'content': response_text})}\n\n"
@@ -65,6 +65,9 @@ async def generate_streaming_response(query: str, k: int = 5):
     except Exception as e:
         logger.error(f"Error generating response: {str(e)}")
         yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+    finally:
+        # Ensure we close the chatbot session
+        await chatbot.close()
 
 @app.post("/api/chat/stream")
 async def chat_stream(request: Request):
@@ -97,13 +100,28 @@ async def chat(request: ChatRequest):
     Returns the chatbot's response and sources in a single response.
     """
     try:
-        response, sources = await chatbot.get_response(request.query, k=request.k, streaming=False)
+        response, sources = await chatbot.get_response(request.query, k=request.k)
         return {
             "response": response,
             "sources": sources
         }
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        await chatbot.close()
+
+@app.post("/api/memory/clear")
+async def clear_memory():
+    """
+    Clear the chatbot's conversation memory.
+    This endpoint should be called when the frontend is refreshed.
+    """
+    try:
+        chatbot.clear_memory()
+        return {"status": "success", "message": "Memory cleared successfully"}
+    except Exception as e:
+        logger.error(f"Error clearing memory: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sources")
