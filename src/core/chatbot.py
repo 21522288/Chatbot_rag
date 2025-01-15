@@ -5,11 +5,13 @@ sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 from typing import List, Tuple, Dict, Any, Generator, Optional, Union, AsyncGenerator
 from langchain.vectorstores.chroma import Chroma
-from langchain_community.llms import HuggingFaceHub
+from langchain_community.chat_models import ChatHuggingFace
+from langchain_community.llms.huggingface_endpoint import HuggingFaceEndpoint
 from langchain.prompts import ChatPromptTemplate
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema.output import GenerationChunk
 from langchain.memory import ConversationBufferWindowMemory
+from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
 import asyncio
 import re
 import aiohttp
@@ -62,24 +64,32 @@ class DentalChatbot:
             embedding_function=self.embedding_function
         )
         
-    def _initialize_llm(self) -> HuggingFaceHub:
+    def _initialize_llm(self) -> ChatHuggingFace:
         """
         Initialize the language model.
         
         Returns:
-            HuggingFaceHub: Initialized language model
+            Union[ChatHuggingFace, HuggingFaceEndpoint]: Initialized language model
         """
         logger.info(f"Initializing language model: {MODEL_NAME}")
-        return HuggingFaceHub(
+        
+        # Create the base HuggingFaceEndpoint for ChatHuggingFace
+        base_llm = HuggingFaceEndpoint(
             repo_id=MODEL_NAME,
             huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
-            model_kwargs={
-                'temperature': 0.5,
-                'max_length': 2048,
-                'max_new_tokens': 1024,
-                'repetition_penalty': 1.1,
-                'do_sample': True
-            }
+            task="text-generation",
+            temperature=0.5,
+            max_new_tokens=1024,
+            repetition_penalty=1.1,
+            do_sample=True,
+            streaming=True,
+            verbose=True
+        )
+        
+        return ChatHuggingFace(
+            llm=base_llm,
+            streaming=True,
+            verbose=True
         )
         
     def _initialize_memory(self) -> ConversationBufferWindowMemory:
@@ -111,6 +121,11 @@ class DentalChatbot:
         if "Assistant:" in response:
             response = response.split("Assistant:", 1)[1]
             
+        # Remove special tokens
+        special_tokens = ['<|im_end|>', '<|endoftext|>', '<|end|>', '<|im_start|>']
+        for token in special_tokens:
+            response = response.replace(token, '')
+            
         # Clean up extra whitespace while preserving newlines
         lines = response.split('\n')
         lines = [re.sub(r'\s+', ' ', line).strip() for line in lines]
@@ -130,7 +145,15 @@ class DentalChatbot:
         """
         prompt = self.classification_prompt.format(query=query)
         response = await asyncio.to_thread(self.llm.invoke, prompt)
-        return "yes" in response.strip().lower()[-5:]
+        
+        # Handle different response types
+        response_text = (
+            response.content if hasattr(response, 'content')
+            else str(response) if response is not None
+            else ""
+        )
+        
+        return "yes" in response_text.strip().lower()[-5:]
                 
     async def _get_appointments(self) -> Dict[str, Any]:
         """
@@ -196,7 +219,7 @@ class DentalChatbot:
 
         try:
             # Get chat history
-            chat_history = self.memory.load_memory_variables({}).get(MEMORY_KEY, "")
+            chat_history = self.memory.load_memory_variables({}).get(MEMORY_KEY, [])
             
             # Check if query is appointment-related
             is_appointment = await self._is_appointment_related(query)
@@ -209,21 +232,26 @@ class DentalChatbot:
                 formatted_appointments = self._format_appointments(appointments)
                 logger.info(f"Formatted appointments: {formatted_appointments}")
                 
-                prompt = self.prompt_template.format(
+                # Format the prompt using the template
+                prompt_value = self.prompt_template.format_messages(
                     context=formatted_appointments,
                     question=query,
                     chat_history=chat_history
                 )
+                
                 sources = [{"source": "Appointments API", "relevance_score": 1.0}]
             else:
                 # Handle general query using existing logic
                 results = self.vector_store.similarity_search_with_score(query, k=k)
                 context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
-                prompt = self.prompt_template.format(
+                
+                # Format the prompt using the template
+                prompt_value = self.prompt_template.format_messages(
                     context=context_text,
                     question=query,
                     chat_history=chat_history
                 )
+                
                 sources = [
                     {
                         "id": doc.metadata.get("id"),
@@ -234,28 +262,63 @@ class DentalChatbot:
                     for doc, score in results
                 ]
 
-            raw_response = await asyncio.to_thread(self.llm.invoke, prompt)
-            processed_response = self._process_response(raw_response)
-            
-            # Save the conversation to memory
-            self.memory.save_context(
-                {"input": query},
-                {"output": processed_response}
-            )
-            
             if streaming:
                 async def response_generator():
-                    tokens = re.findall(r'\w+|\W+', processed_response)
-                    for token in tokens:
-                        yield token
-                        await asyncio.sleep(0.02)
+                    buffer = ""
+                    try:
+                        async for chunk in self.llm.astream(prompt_value):
+                            if hasattr(chunk, 'content'):
+                                text = chunk.content
+                                text = text.replace("\\n", "\n")
+                                if "<|im_end|>" in text:
+                                    text = text.replace("<|im_end|>", "")
+                                buffer += text
+                                logger.debug(f"Streaming content: {text}")
+                                # Simple consistent delay
+                                if text.strip():  # Only delay for non-empty tokens
+                                    await asyncio.sleep(0.02)
+                                yield text
+                            elif isinstance(chunk, str):
+                                buffer += chunk
+                                logger.debug(f"Streaming string: {chunk}")
+                                if chunk.strip():  # Only delay for non-empty tokens
+                                    await asyncio.sleep(0.02)
+                                yield chunk
+                        
+                        # Save the complete response to memory after streaming
+                        if buffer:
+                            processed_buffer = self._process_response(buffer)
+                            self.memory.save_context(
+                                {"input": query},
+                                {"output": processed_buffer}
+                            )
+                    except Exception as e:
+                        logger.error(f"Error in streaming: {str(e)}")
+                        yield f"Error during streaming: {str(e)}"
+                    
                 return response_generator()
-            
-            return processed_response, sources
-            
+            else:
+                # Handle non-streaming response
+                response = await asyncio.to_thread(self.llm.invoke, prompt_value)
+                response_text = response.content if hasattr(response, 'content') else str(response)
+                processed_response = self._process_response(response_text)
+                
+                # Save the conversation to memory
+                self.memory.save_context(
+                    {"input": query},
+                    {"output": processed_response}
+                )
+                
+                return processed_response, sources
+
         except Exception as e:
-            logger.error(f"Error generating response: {str(e)}")
-            raise
+            logger.error(f"Error getting response: {str(e)}")
+            error_msg = "I apologize, but I encountered an error while processing your request."
+            if streaming:
+                async def error_generator():
+                    yield error_msg
+                return error_generator()
+            return error_msg, []
             
     async def close(self):
         """Close the aiohttp session."""

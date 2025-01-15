@@ -16,7 +16,7 @@ def log_environment_variables():
     """Log all necessary environment variables for debugging."""
     env_vars = {
         'MODEL_NAME': os.getenv('MODEL_NAME', 'Not set'),
-        'HUGGINGFACEHUB_API_TOKEN': os.getenv('HUGGINGFACEHUB_API_TOKEN', 'Not set'), #'Present' if os.getenv('HUGGINGFACEHUB_API_TOKEN') else 'Not set',
+        'HUGGINGFACEHUB_API_TOKEN': 'Present' if os.getenv('HUGGINGFACEHUB_API_TOKEN') else 'Not set',
         'TRANSFORMERS_CACHE': os.getenv('TRANSFORMERS_CACHE', 'Not set'),
         'HF_HOME': os.getenv('HF_HOME', 'Not set'),
         'SENTENCE_TRANSFORMERS_HOME': os.getenv('SENTENCE_TRANSFORMERS_HOME', 'Not set'),
