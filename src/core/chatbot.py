@@ -1,7 +1,8 @@
 """Core chatbot functionality for the dental clinic assistant."""
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import sqlite3
 
 from typing import List, Tuple, Dict, Any, Generator, Optional, Union, AsyncGenerator
 from langchain.vectorstores.chroma import Chroma
@@ -15,7 +16,7 @@ from langchain.schema.messages import HumanMessage, SystemMessage, AIMessage
 import asyncio
 import re
 import aiohttp
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from src.config.settings import (
     CHROMA_DIR,
@@ -153,7 +154,7 @@ class DentalChatbot:
             else ""
         )
         
-        return "yes" in response_text.strip().lower()[-5:]
+        return "yes" in response_text.strip().lower()
                 
     async def _get_appointments(self) -> Dict[str, Any]:
         """
@@ -181,19 +182,34 @@ class DentalChatbot:
         Returns:
             str: Formatted appointments string
         """
+        final_prompt = "Bây giờ là " + datetime.now(tz=timezone(timedelta(hours=7))).strftime("%H:%M") + " ngày " + datetime.now(tz=timezone(timedelta(hours=7))).strftime("%d/%m/%Y") + " thứ " + datetime.now(tz=timezone(timedelta(hours=7))).strftime("%A") \
+        + "\nKhông cho phép đặt lịch hẹn trong quá khứ. " \
+        + "\nKhông cung cấp cho khách hàng danh sách lịch hẹn hiện tại nếu không được hỏi.\n" \
+        + "\nĐể hoàn tất đặt lịch thì khách hàng cần chờ nhân viên gọi xác nhận qua số điện thoại khách hàng cung cấp."
         if not appointments or isinstance(appointments, dict) and "error" in appointments:
-            return "Không có thông tin lịch hẹn."
+            return final_prompt + "Không có thông tin lịch hẹn hiện tại."
             
         formatted = []
         for appt in appointments:
+            # Parse and reformat the date
+            date_str = appt.get('ngay', 'N/A')
+            try:
+                if date_str != 'N/A':
+                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')  
+                    date_str = date_obj.strftime('%d/%m/%Y')
+            except ValueError:
+                pass
+
             formatted.append(
                 f"- Lịch hẹn: {appt.get('maLichHen', 'N/A')}\n"
-                f"  + Ngày: {appt.get('ngay', 'N/A')}\n"
+                f"  + Ngày: {date_str}\n"
                 f"  + Giờ: {appt.get('gio', 'N/A')}\n"
                 f"  + Trạng thái: {appt.get('trangThai', 'N/A')}\n"
             )
         
-        return "Thông tin về các lịch hẹn hiện tại:\n" + "\n".join(formatted)
+        final_prompt = final_prompt + "\nThông tin về các lịch hẹn hiện tại:\n" + "\n".join(formatted)
+        
+        return final_prompt
 
     async def get_response(
         self, 
@@ -230,7 +246,6 @@ class DentalChatbot:
                 # Get all appointments and format them
                 appointments = await self._get_appointments()
                 formatted_appointments = self._format_appointments(appointments)
-                logger.info(f"Formatted appointments: {formatted_appointments}")
                 
                 # Format the prompt using the template
                 prompt_value = self.prompt_template.format_messages(
@@ -270,8 +285,6 @@ class DentalChatbot:
                             if hasattr(chunk, 'content'):
                                 text = chunk.content
                                 text = text.replace("\\n", "\n")
-                                if "<|im_end|>" in text:
-                                    text = text.replace("<|im_end|>", "")
                                 buffer += text
                                 logger.debug(f"Streaming content: {text}")
                                 # Simple consistent delay
@@ -313,7 +326,7 @@ class DentalChatbot:
 
         except Exception as e:
             logger.error(f"Error getting response: {str(e)}")
-            error_msg = "I apologize, but I encountered an error while processing your request."
+            error_msg = "Tôi xin lỗi, nhưng tôi gặp phải một sự cố khi xử lý yêu cầu của bạn."
             if streaming:
                 async def error_generator():
                     yield error_msg

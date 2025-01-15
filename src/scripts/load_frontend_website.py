@@ -1,7 +1,8 @@
 """Script to crawl and load the frontend website content into the chatbot's knowledge base."""
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import sqlite3
 
 from pathlib import Path
 from src.config.settings import CHROMA_DIR

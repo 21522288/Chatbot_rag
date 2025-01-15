@@ -1,7 +1,8 @@
 """Document loading and processing functionality."""
-__import__('pysqlite3')
-import sys
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+# __import__('pysqlite3')
+# import sys
+# sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+import sqlite3
 
 import os
 import shutil
