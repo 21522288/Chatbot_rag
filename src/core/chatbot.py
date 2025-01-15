@@ -26,7 +26,8 @@ from src.config.settings import (
     BACKEND_API_URL,
     APPOINTMENT_CLASSIFICATION_PROMPT,
     MEMORY_KEY,
-    MEMORY_WINDOW_SIZE
+    MEMORY_WINDOW_SIZE,
+    DEFAULT_K_RETRIEVED_DOCS
 )
 from src.models.embeddings import get_embedding_function
 from src.utils.logger import get_logger
@@ -214,7 +215,7 @@ class DentalChatbot:
     async def get_response(
         self, 
         query: str, 
-        k: int = 5,
+        k: int = DEFAULT_K_RETRIEVED_DOCS,
         streaming: bool = False
     ) -> Union[AsyncGenerator[str, None], Tuple[str, List[Dict[str, Any]]]]:
         """
@@ -339,7 +340,7 @@ class DentalChatbot:
             await self.session.close()
             self.session = None
 
-    def get_sources(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+    def get_sources(self, query: str, k: int = DEFAULT_K_RETRIEVED_DOCS) -> List[Dict[str, Any]]:
         """
         Get the source documents for a query without generating a response.
         
