@@ -17,8 +17,8 @@ HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 DEFAULT_K_RETRIEVED_DOCS = os.getenv("DEFAULT_K_RETRIEVED_DOCS", 10)
 
 # Document processing settings
-CHUNK_SIZE = os.getenv("CHUNK_SIZE", 800)
-CHUNK_OVERLAP = os.getenv("CHUNK_OVERLAP", 80)
+CHUNK_SIZE = os.getenv("CHUNK_SIZE", 1000)
+CHUNK_OVERLAP = os.getenv("CHUNK_OVERLAP", 100)
 
 # Vector store settings
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -81,6 +81,17 @@ Query: {query}
 
 Return only "yes" if it's appointment-related, or "no" if it's not.
 """
+
+# Query condensing prompt template
+QUERY_CONDENSING_PROMPT = """Given the following conversation history and a new question, rephrase the question to be standalone, 
+incorporating any relevant context from the conversation history.
+
+Chat History:
+{history}
+
+New Question: {question}
+
+Standalone question:"""
 
 # Logging settings
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

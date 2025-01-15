@@ -27,7 +27,8 @@ from src.config.settings import (
     APPOINTMENT_CLASSIFICATION_PROMPT,
     MEMORY_KEY,
     MEMORY_WINDOW_SIZE,
-    DEFAULT_K_RETRIEVED_DOCS
+    DEFAULT_K_RETRIEVED_DOCS,
+    QUERY_CONDENSING_PROMPT
 )
 from src.models.embeddings import get_embedding_function
 from src.utils.logger import get_logger
@@ -212,6 +213,41 @@ class DentalChatbot:
         
         return final_prompt
 
+    def _condense_query_with_history(self, query: str, chat_history: List) -> str:
+        """
+        Condense the user's query with the chat history to create a more contextual query.
+        
+        Args:
+            query: The user's current question
+            chat_history: List of previous conversation messages
+            
+        Returns:
+            str: Condensed query incorporating relevant context
+        """
+        if not chat_history:
+            return query
+            
+        # Convert chat history to a readable format
+        history_text = ""
+        for message in chat_history[-2:]:  # Only use last exchange for context
+            if isinstance(message, HumanMessage):
+                history_text += f"Human: {message.content}\n"
+            elif isinstance(message, AIMessage):
+                history_text += f"Assistant: {message.content}\n"
+        
+        # Create a prompt to condense the query using template from settings
+        condense_prompt = ChatPromptTemplate.from_template(QUERY_CONDENSING_PROMPT)
+        
+        # Get the condensed query
+        messages = condense_prompt.format_messages(history=history_text, question=query)
+        condensed_response = self.llm.invoke(messages)
+        condensed_query = self._process_response(str(condensed_response))
+        
+        logger.info(f"Original query: {query}")
+        logger.info(f"Condensed query: {condensed_query}")
+        
+        return condensed_query
+
     async def get_response(
         self, 
         query: str, 
@@ -257,14 +293,17 @@ class DentalChatbot:
                 
                 sources = [{"source": "Appointments API", "relevance_score": 1.0}]
             else:
-                # Handle general query using existing logic
-                results = self.vector_store.similarity_search_with_score(query, k=k)
+                # Condense the query with chat history
+                condensed_query = self._condense_query_with_history(query, chat_history)
+                
+                # Handle general query using existing logic with condensed query
+                results = self.vector_store.similarity_search_with_score(condensed_query, k=k)
                 context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
                 
                 # Format the prompt using the template
                 prompt_value = self.prompt_template.format_messages(
                     context=context_text,
-                    question=query,
+                    question=query,  # Use original query for final response
                     chat_history=chat_history
                 )
                 
