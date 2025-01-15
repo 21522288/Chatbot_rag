@@ -28,7 +28,8 @@ from src.config.settings import (
     MEMORY_KEY,
     MEMORY_WINDOW_SIZE,
     DEFAULT_K_RETRIEVED_DOCS,
-    QUERY_CONDENSING_PROMPT
+    QUERY_CONDENSING_PROMPT,
+    APPOINTMENT_FORMATTING_PROMPT
 )
 from src.models.embeddings import get_embedding_function
 from src.utils.logger import get_logger
@@ -184,12 +185,15 @@ class DentalChatbot:
         Returns:
             str: Formatted appointments string
         """
-        final_prompt = "Bây giờ là " + datetime.now(tz=timezone(timedelta(hours=7))).strftime("%H:%M") + " ngày " + datetime.now(tz=timezone(timedelta(hours=7))).strftime("%d/%m/%Y") + " thứ " + datetime.now(tz=timezone(timedelta(hours=7))).strftime("%A") \
-        + "\nKhông cho phép đặt lịch hẹn trong quá khứ. " \
-        + "\nKhông cung cấp cho khách hàng danh sách lịch hẹn hiện tại nếu không được hỏi.\n" \
-        + "\nĐể hoàn tất đặt lịch thì khách hàng cần chờ nhân viên gọi xác nhận qua số điện thoại khách hàng cung cấp."
+        current_time = datetime.now(tz=timezone(timedelta(hours=7)))
+        final_prompt = APPOINTMENT_FORMATTING_PROMPT.format(
+            time=current_time.strftime("%H:%M"),
+            date=current_time.strftime("%d/%m/%Y"),
+            weekday=current_time.strftime("%A")
+        )
+
         if not appointments or isinstance(appointments, dict) and "error" in appointments:
-            return final_prompt + "Không có thông tin lịch hẹn hiện tại."
+            return final_prompt + "\nNo current appointment information available."
             
         formatted = []
         for appt in appointments:
@@ -203,13 +207,13 @@ class DentalChatbot:
                 pass
 
             formatted.append(
-                f"- Lịch hẹn: {appt.get('maLichHen', 'N/A')}\n"
-                f"  + Ngày: {date_str}\n"
-                f"  + Giờ: {appt.get('gio', 'N/A')}\n"
-                f"  + Trạng thái: {appt.get('trangThai', 'N/A')}\n"
+                f"- Appointment: {appt.get('maLichHen', 'N/A')}\n"
+                f"  + Date: {date_str}\n"
+                f"  + Time: {appt.get('gio', 'N/A')}\n"
+                f"  + Status: {appt.get('trangThai', 'N/A')}\n"
             )
         
-        final_prompt = final_prompt + "\nThông tin về các lịch hẹn hiện tại:\n" + "\n".join(formatted)
+        final_prompt = final_prompt + "\nCurrent appointment information:\n" + "\n".join(formatted)
         
         return final_prompt
 
@@ -274,8 +278,11 @@ class DentalChatbot:
             # Get chat history
             chat_history = self.memory.load_memory_variables({}).get(MEMORY_KEY, [])
             
+            # Condense the query with chat history
+            condensed_query = self._condense_query_with_history(query, chat_history)
+            
             # Check if query is appointment-related
-            is_appointment = await self._is_appointment_related(query)
+            is_appointment = await self._is_appointment_related(condensed_query)
             
             logger.info(f"Appointment related: {is_appointment}")
             
@@ -291,11 +298,10 @@ class DentalChatbot:
                     chat_history=chat_history
                 )
                 
+                logger.info(f"Prompt value: {prompt_value}")
+                
                 sources = [{"source": "Appointments API", "relevance_score": 1.0}]
             else:
-                # Condense the query with chat history
-                condensed_query = self._condense_query_with_history(query, chat_history)
-                
                 # Handle general query using existing logic with condensed query
                 results = self.vector_store.similarity_search_with_score(condensed_query, k=k)
                 context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])

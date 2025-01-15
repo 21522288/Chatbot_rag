@@ -18,7 +18,6 @@ import os
 class WebCrawler:
     def __init__(self, base_url: str = "http://localhost:3000"):
         self.base_url = base_url
-        self.visited_urls: Set[str] = set()
         self.content_data: List[Dict] = []
         
         # Create a temporary directory for Chrome user data
@@ -45,20 +44,11 @@ class WebCrawler:
             raise
         
         # Define known routes based on App.js routes
-        self.known_routes = [
+        self.routes_to_crawl = [
             "/",
             "/doctors",
             "/services",
             "/contacts",
-            "/booking",
-            "/sign_in",
-            "/sign_up",
-            "/forgetpassword",
-            "/profile",
-            "/mytreatmentrecord",
-            "/manager",
-            "/confirm_email",
-            "/bookingOnline"
         ]
 
     def __del__(self):
@@ -91,7 +81,7 @@ class WebCrawler:
             
         is_known_route = any(
             path == route or path.startswith(f"{route}/")
-            for route in self.known_routes
+            for route in self.routes_to_crawl
         )
         
         return (
@@ -170,48 +160,18 @@ class WebCrawler:
                 "sections": []
             }
 
-    def crawl_page(self, url: str) -> None:
-        """Crawl a single page and extract its content."""
-        if url in self.visited_urls:
-            return
-
-        try:
-            logger.info(f"\nCrawling page: {url}")
-            
-            # Extract content using Selenium
-            content = self.extract_content(url)
-            if content["sections"]:
-                self.content_data.append(content)
-                logger.info(f"Successfully added content from: {url}")
-            
-            self.visited_urls.add(url)
-            
-            # Find and process links
-            try:
-                elements = self.wait.until(EC.presence_of_all_elements_located((By.TAG_NAME, "a")))
-                for element in elements:
-                    try:
-                        href = element.get_attribute("href")
-                        if href and self.is_valid_url(href) and href not in self.visited_urls:
-                            self.crawl_page(href)
-                    except Exception as e:
-                        continue
-
-            except Exception as e:
-                logger.error(f"Error finding links: {str(e)}")
-                    
-        except Exception as e:
-            logger.error(f"Error crawling {url}: {str(e)}")
-
     def crawl(self) -> List[Dict]:
         """Start crawling from all known routes."""
         logger.info(f"\nStarting crawl from {self.base_url}")
         
         try:
-            for route in self.known_routes:
+            # Crawl each defined route once
+            for route in self.routes_to_crawl:
                 url = urljoin(self.base_url, route)
-                if url not in self.visited_urls:
-                    self.crawl_page(url)
+                content = self.extract_content(url)
+                if content["sections"]:
+                    self.content_data.append(content)
+                    logger.info(f"Successfully added content from: {url}")
             
             logger.info(f"\nCrawling completed. Found {len(self.content_data)} pages")
             return self.content_data

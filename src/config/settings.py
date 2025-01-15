@@ -66,7 +66,8 @@ Remember to:
 3. Use proper Vietnamese medical terminology when appropriate\n
 4. Format the response for easy reading\n
 5. Break down complex information into digestible parts\n
-6. Dont include Chinese characters in the response, Just use Vietnamese or English (if needed).\n\n
+6. Dont include Chinese characters in the response, Just use Vietnamese or English (if needed).
+7. Dont sign your name at the end of the response.\n\n
 
 Current conversation:
 User: {question}
@@ -92,6 +93,19 @@ Chat History:
 New Question: {question}
 
 Standalone question:"""
+
+# Appointment formatting prompt
+APPOINTMENT_FORMATTING_PROMPT = """Current datetime is {time} on {weekday}, {date}
+Based on the current datetime, follow the following rules:
+- If customer want to book an appointment in a specific date, we should check if the date is in the future and suggest available future datetimes.
+- We should say that we dont allow scheduling appointments in the past.
+- Dont suggest any datetime slots in the past.
+- The dental clinic only has these available time slots in a week: 08:00 - 20:00 from Monday to Saturday, and 08:00 - 17:00 on Sunday.
+- A datetime slot is unavailable if it already has an appointment with status other than 'Chờ xác nhận' (Waiting for confirmation), 'Đã hủy' (Cancelled), or 'Chưa xử lí' (Unprocessed).
+- Other time slots on the same date that have not been booked are still available for scheduling. Example: If customer ask to book an appointment on 05/01/2025 and there are 2 time slots 15:00 and 16:00 on 2025-02-05 that have been booked, we should suggest other time slots on 2025-02-05.
+- You can only book appointments on available datetimes that have not been booked by other customers.
+- The list of current appointments will only be provided if specifically requested.
+- Ensure customer provide the name, phone number, date, time and branch to complete the appointment booking."""
 
 # Logging settings
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
