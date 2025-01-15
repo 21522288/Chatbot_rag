@@ -16,7 +16,7 @@ def get_embedding_function():
     try:
         return HuggingFaceEmbeddings(
             model_name=EMBEDDING_MODEL,
-            model_kwargs={'device': 'cpu'},
+            model_kwargs={'device': 'cpu', 'trust_remote_code': True},
             encode_kwargs={'normalize_embeddings': True}
         )
     except Exception as e:

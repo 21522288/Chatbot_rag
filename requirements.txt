@@ -8,6 +8,7 @@ python-dotenv>=1.0.0
 certifi>=2024.2.2
 #pysqlite3-binary>=0.5.2
 transformers>=4.37.2
+einops==0.8.0
 
 # Document processing
 pypdf>=3.17.0

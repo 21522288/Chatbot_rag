@@ -1,4 +1,5 @@
 """FastAPI application for the dental clinic chatbot."""
+import traceback
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -9,6 +10,8 @@ import json
 
 from src.core.chatbot import DentalChatbot
 from src.utils.logger import get_logger
+from src.data_processing.document_loader import DocumentProcessor
+from src.config.settings import DEFAULT_K_RETRIEVED_DOCS
 
 logger = get_logger(__name__)
 
@@ -27,13 +30,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    """Load documents into vector store on startup."""
+    try:
+        logger.info("Loading documents into vector store...")
+        processor = DocumentProcessor()
+        processor.process_and_store()
+        logger.info("Documents loaded successfully")
+    except Exception as e:
+        # Traceback
+        logger.error(f"Error loading documents: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        # Don't raise the exception - allow API to start even if document loading fails
+        # The vector store will use existing documents if available
+
 # Initialize chatbot
 chatbot = DentalChatbot()
 
 class ChatRequest(BaseModel):
     """Request model for chat endpoints."""
     query: str
-    k: Optional[int] = 5
+    k: Optional[int] = DEFAULT_K_RETRIEVED_DOCS
 
 class SourceResponse(BaseModel):
     """Response model for sources."""

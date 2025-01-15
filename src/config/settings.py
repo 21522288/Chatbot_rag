@@ -14,6 +14,7 @@ CHROMA_DIR = BASE_DIR / "chroma"
 # Model settings
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-Coder-32B-Instruct")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+DEFAULT_K_RETRIEVED_DOCS = os.getenv("DEFAULT_K_RETRIEVED_DOCS", 10)
 
 # Document processing settings
 CHUNK_SIZE = os.getenv("CHUNK_SIZE", 800)
