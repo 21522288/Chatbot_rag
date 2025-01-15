@@ -7,7 +7,7 @@ import sqlite3
 from pathlib import Path
 from src.config.settings import CHROMA_DIR
 from src.utils.web_crawler import WebCrawler
-from src.data_processing.frontend_content import add_to_vectorstore
+from src.data_processing.frontend_content_loader import add_to_vectorstore
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,6 +26,7 @@ def main():
         # Format content for vector store
         logger.info("Formatting content for vector store...")
         documents = crawler.format_for_vectorstore()
+        logger.info(documents[0])
         logger.info(f"Found {len(documents)} documents")
         
         # Add to vector store

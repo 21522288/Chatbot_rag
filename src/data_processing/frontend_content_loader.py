@@ -1,6 +1,7 @@
 """Module for processing and loading frontend content into the chatbot's knowledge base."""
 import os
 from pathlib import Path
+import traceback
 from typing import List, Dict, Any
 from bs4 import BeautifulSoup
 import json
@@ -99,13 +100,29 @@ def add_to_vectorstore(documents: List[Dict[str, str]], chroma_dir: Path) -> Non
     texts = []
     metadatas = []
     for doc in documents:
-        chunks = text_splitter.split_text(doc["content"])
-        texts.extend(chunks)
-        metadatas.extend([{
-            "source": doc["source"],
-            "type": doc["type"]
-        } for _ in chunks])
+        try:
+            # Ensure content is a string
+            content = str(doc["content"]) if doc["content"] is not None else ""
+            if not content.strip():
+                logger.warning(f"Skipping empty content from source: {doc['source']}")
+                continue
+                
+            chunks = text_splitter.split_text(content)
+            texts.extend(chunks)
+            metadatas.extend([{
+                "source": doc["source"],
+                "type": doc["type"]
+            } for _ in chunks])
+        except Exception as e:
+            logger.error(f"Error processing document from {doc['source']}: {str(e)}")
+            # traceback
+            logger.error(traceback.format_exc())
+            continue
     
+    if not texts:
+        logger.warning("No valid texts to add to vector store")
+        return
+        
     # Initialize vector store
     embedding_function = get_embedding_function()
     vector_store = Chroma(

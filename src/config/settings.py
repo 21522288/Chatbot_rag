@@ -14,18 +14,18 @@ CHROMA_DIR = BASE_DIR / "chroma"
 # Model settings
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-Coder-32B-Instruct")
 HUGGINGFACE_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-DEFAULT_K_RETRIEVED_DOCS = os.getenv("DEFAULT_K_RETRIEVED_DOCS", 10)
+DEFAULT_K_RETRIEVED_DOCS = int(os.getenv("DEFAULT_K_RETRIEVED_DOCS", 10))
 
 # Document processing settings
-CHUNK_SIZE = os.getenv("CHUNK_SIZE", 1000)
-CHUNK_OVERLAP = os.getenv("CHUNK_OVERLAP", 100)
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", 1000))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", 100))
 
 # Vector store settings
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
 
 # Memory settings
 MEMORY_KEY = "chat_history"
-MEMORY_WINDOW_SIZE = os.getenv("MEMORY_WINDOW_SIZE", 10)  # Number of previous conversations to remember
+MEMORY_WINDOW_SIZE = int(os.getenv("MEMORY_WINDOW_SIZE", 10))  # Number of previous conversations to remember
 
 # Prompt templates
 DEFAULT_PROMPT_TEMPLATE = '''
