@@ -123,9 +123,13 @@ class DocumentProcessor:
         try:
             loader = PyPDFDirectoryLoader(str(DATA_DIR))
             documents = loader.load()
-            # Ensure metadata values are strings
+            # Ensure metadata values are strings and add filename as subject
             for doc in documents:
+                title = os.path.splitext(doc.metadata.get('source', '').split('/')[-1])[0]
                 doc.metadata = {k: str(v) for k, v in doc.metadata.items()}
+                doc.metadata['title'] = title
+                doc.metadata['source'] = doc.metadata.get('source', '').split('/')[-1]
+                doc.metadata['id'] = doc.metadata.get('id', '').split('/')[-1]
             logger.info(f"Successfully loaded {len(documents)} documents")
             return documents
         except Exception as e:
@@ -134,28 +138,72 @@ class DocumentProcessor:
             
     def split_documents(self, documents: List[Document]) -> List[Document]:
         """
-        Split documents into smaller chunks.
+        Split documents into smaller chunks using contextual chunking.
         
         Args:
             documents: List of documents to split
             
         Returns:
-            List[Document]: List of document chunks
+            List[Document]: List of document chunks with preserved context
         """
         logger.info(f"Splitting documents with chunk size {CHUNK_SIZE} and overlap {CHUNK_OVERLAP}")
         try:
+            # Define separators in order of priority
+            separators = [
+                "\n## ",     # Section headings
+                "\n### ",    # Subsection headings  
+                "\n\n",      # Paragraphs
+                "\n",        # Line breaks
+                ". ",        # Sentences
+                ", ",        # Clauses
+                " ",        # Words
+                ""          # Characters
+            ]
+            
             splitter = RecursiveCharacterTextSplitter(
                 chunk_size=int(CHUNK_SIZE),
                 chunk_overlap=int(CHUNK_OVERLAP),
                 length_function=len,
-                add_start_index=True
+                add_start_index=True,
+                separators=separators
             )
-            chunks = splitter.split_documents(documents)
+            
+            # Process each document to preserve context
+            processed_chunks = []
+            for doc in documents:
+                # Extract document title/subject if present
+                title = ""
+                content = doc.page_content
+                metadata = doc.metadata
+                title = metadata.get('title', '')
+                
+                # Split the document
+                doc_chunks = splitter.split_text(content)
+                
+                # Add chunks with preserved context
+                for i, chunk in enumerate(doc_chunks):
+                    # Add title as context if present
+                    if title:
+                        chunk = f"{title}\n\n{chunk}"
+                    
+                    # Create new document with chunk
+                    chunk_doc = Document(
+                        page_content=chunk,
+                        metadata={
+                            **doc.metadata,
+                            "chunk_index": str(i),
+                            "total_chunks": str(len(doc_chunks))
+                        }
+                    )
+                    processed_chunks.append(chunk_doc)
+            
             # Ensure metadata values are strings
-            for chunk in chunks:
+            for chunk in processed_chunks:
                 chunk.metadata = {k: str(v) for k, v in chunk.metadata.items()}
-            logger.info(f"Created {len(chunks)} chunks from {len(documents)} documents")
-            return chunks
+                
+            logger.info(f"Created {len(processed_chunks)} contextual chunks from {len(documents)} documents")
+            return processed_chunks
+            
         except Exception as e:
             logger.error(f"Error splitting documents: {str(e)}")
             raise
