@@ -8,7 +8,7 @@ A chatbot that provides information about dental clinic services and procedures 
 2. Create a virtual environment and activate it:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
 ```
 3. Install dependencies:
 ```bash
@@ -38,7 +38,7 @@ From now, you can access:
      ```json
      {
        "query": "your question here",
-       "k": 5  // optional, number of relevant documents to retrieve
+       "k": 10  // optional, number of relevant documents to retrieve
      }
      ```
    - Returns a stream of SSE messages with the following types:
@@ -59,7 +59,7 @@ From now, you can access:
            "id": "source_id",
            "source": "document name",
            "page": 1,
-           "relevance_score": 0.95
+           "distance_score": 0.95
          }
        ]
      }
@@ -68,7 +68,7 @@ From now, you can access:
 3. **Get Sources** - `/sources` (POST)
    - Retrieves relevant sources without generating a response
    - Same request format as chat endpoints
-   - Returns an array of source documents with relevance scores
+   - Returns an array of source documents with distance scores
 
 ## Development
 

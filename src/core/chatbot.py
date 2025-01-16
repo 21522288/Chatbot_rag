@@ -233,7 +233,7 @@ class DentalChatbot:
             
         # Convert chat history to a readable format
         history_text = ""
-        for message in chat_history[-2:]:  # Only use last exchange for context
+        for message in chat_history[-2:]:
             if isinstance(message, HumanMessage):
                 history_text += f"Human: {message.content}\n"
             elif isinstance(message, AIMessage):
@@ -298,9 +298,7 @@ class DentalChatbot:
                     chat_history=chat_history
                 )
                 
-                logger.info(f"Prompt value: {prompt_value}")
-                
-                sources = [{"source": "Appointments API", "relevance_score": 1.0}]
+                sources = [{"source": "Appointments API", "distance_score": 1.0}]
             else:
                 # Handle general query using existing logic with condensed query
                 results = self.vector_store.similarity_search_with_score(condensed_query, k=k)
@@ -318,7 +316,7 @@ class DentalChatbot:
                         "id": doc.metadata.get("id"),
                         "source": doc.metadata.get("source"),
                         "page": doc.metadata.get("page"),
-                        "relevance_score": float(score)
+                        "distance_score": float(score)
                     }
                     for doc, score in results
                 ]
@@ -402,7 +400,7 @@ class DentalChatbot:
                 "id": doc.metadata.get("id"),
                 "source": doc.metadata.get("source"),
                 "page": doc.metadata.get("page"),
-                "relevance_score": float(score),
+                "distance_score": float(score),
                 "content": doc.page_content
             }
             for doc, score in results

@@ -24,7 +24,7 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,8 +42,6 @@ async def startup_event():
         # Traceback
         logger.error(f"Error loading documents: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
-        # Don't raise the exception - allow API to start even if document loading fails
-        # The vector store will use existing documents if available
 
 # Initialize chatbot
 chatbot = DentalChatbot()
@@ -58,10 +56,10 @@ class SourceResponse(BaseModel):
     id: Optional[str]
     source: Optional[str]
     page: Optional[int]
-    relevance_score: float
+    distance_score: float
     content: Optional[str]
 
-async def generate_streaming_response(query: str, k: int = 5):
+async def generate_streaming_response(query: str, k: int = DEFAULT_K_RETRIEVED_DOCS):
     """Generate streaming response for chat endpoint."""
     try:
         # Get the token generator
@@ -96,7 +94,7 @@ async def chat_stream(request: Request):
     try:
         # Parse the JSON body manually
         body = await request.json()
-        chat_request = ChatRequest(**body)
+        chat_request = ChatRequest(**body) # ChatRequest(query=body['query'], k=body['k'])
         
         return StreamingResponse(
             generate_streaming_response(chat_request.query, chat_request.k),

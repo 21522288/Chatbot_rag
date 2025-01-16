@@ -119,10 +119,10 @@ class WebCrawler:
             soup = BeautifulSoup(html_content, 'html.parser')
 
             # Process content in document order
-            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span', 'ul', 'ol']):
+            for element in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'div', 'p', 'span', 'ul', 'ol']):
                 if element.name.startswith('h'):
                     # Extract heading
-                    text = element.get_text(strip=True)
+                    text = element.get_text(separator=' ', strip=True)
                     if text:
                         content["sections"].append({
                             "type": "heading",
@@ -130,18 +130,22 @@ class WebCrawler:
                             "text": text
                         })
                 
-                elif element.name in ['p', 'span']:
-                    # Extract paragraph or span text
-                    text = element.get_text(strip=True)
-                    if text:
+                elif element.name in ['div', 'p', 'span']:
+                    # Extract only direct text nodes, ignoring nested element content
+                    direct_text = ' '.join(
+                        text.strip() 
+                        for text in element.find_all(string=True, recursive=False) 
+                        if text.strip()
+                    )
+                    if direct_text:
                         content["sections"].append({
                             "type": "text",
-                            "content": text
+                            "content": direct_text
                         })
                 
                 elif element.name in ['ul', 'ol']:
                     # Extract list items
-                    items = [li.get_text(strip=True) for li in element.find_all('li')]
+                    items = [li.get_text(separator=' ', strip=True) for li in element.find_all('li')]
                     if items:
                         content["sections"].append({
                             "type": "list",
