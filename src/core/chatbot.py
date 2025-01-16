@@ -86,7 +86,7 @@ class DentalChatbot:
             repo_id=MODEL_NAME,
             huggingfacehub_api_token=HUGGINGFACE_API_TOKEN,
             task="text-generation",
-            temperature=0.5,
+            temperature=0.3,
             max_new_tokens=1024,
             repetition_penalty=1.1,
             do_sample=True,
@@ -335,6 +335,8 @@ class DentalChatbot:
                     question=query,
                     chat_history=chat_history
                 )
+
+                # logger.info(f"Prompt value: \n {prompt_value}")
                 
                 sources = [{"source": "Appointments API", "distance_score": 0.0}]
             else:

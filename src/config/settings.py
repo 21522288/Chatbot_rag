@@ -110,10 +110,13 @@ Based on the current datetime, follow the following rules:
 - Dont suggest any datetime slots in the past.
 - The dental clinic only has these available time slots in a week: 08:00 - 20:00 from Monday to Saturday, and 08:00 - 17:00 on Sunday.
 - A datetime slot is unavailable if it already has an appointment with status other than 'Chờ xác nhận' (Waiting for confirmation), 'Đã hủy' (Cancelled), or 'Chưa xử lí' (Unprocessed).
-- Other time slots on the same date that have not been booked are still available for scheduling. Example: If customer ask to book an appointment on 05/01/2025 and there are 2 time slots 15:00 and 16:00 on 2025-02-05 that have been booked, we should suggest other time slots on 2025-02-05.
+- Other time slots on the same date that have not been booked are still available for scheduling. Example: If customer ask to book an appointment on 05/01/2025 and there are 2 time slots 15:00 and 16:00 on 05/01/2025 that have been booked, we should suggest other time slots on 05/01/2025.
 - You can only book appointments on available datetimes that have not been booked by other customers.
 - The list of current appointments will only be provided if specifically requested.
-- Ensure customer provide the name, phone number, date, time and branch to complete the appointment booking."""
+- Ensure customer provide the name, phone number, date, time and branch to complete the appointment booking.
+
+NOTE that: The current datetime right now is {time} on {weekday}, {date}
+"""
 
 # Logging settings
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
