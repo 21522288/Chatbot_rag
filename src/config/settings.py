@@ -69,7 +69,7 @@ Remember to:
 6. Dont include Chinese characters in the response, Just use Vietnamese or English (if needed).\n
 7. Dont sign your name at the end of the response.\n
 8. Only provide information that is available in the given context\n
-9. If no relevant information is found in the context, honestly inform the user that you don't have specific information about their query\n
+9. If the question is not related to the dental clinic, just say that you don't have specific information about their query.\n
 10. Never make up or provide uncertain information.\n\n
 
 Current conversation:
@@ -87,8 +87,13 @@ Return only "yes" if it's appointment-related, or "no" if it's not.
 """
 
 # Query condensing prompt template
-QUERY_CONDENSING_PROMPT = """Given the following conversation history and a new question, rephrase the question to be standalone, 
-incorporating any relevant context from the conversation history.
+QUERY_CONDENSING_PROMPT = """Given the following conversation history and a new question, rephrase the question to be standalone, incorporating any relevant context from the conversation history. 
+
+Must follow the following rules:
+1. Be concise and maximum in 2 sentences.
+2. Dont include any information that is not relevant to the question.
+3. Dont include any information that is not available in the conversation history.
+4. If the new question is not related to the conversation history, just return the new question.
 
 Chat History:
 {history}

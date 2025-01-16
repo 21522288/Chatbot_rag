@@ -17,6 +17,8 @@ import asyncio
 import re
 import aiohttp
 from datetime import datetime, timezone, timedelta
+from langchain.schema import Document
+from sentence_transformers import CrossEncoder
 
 from src.config.settings import (
     CHROMA_DIR,
@@ -49,6 +51,8 @@ class DentalChatbot:
         self.llm = self._initialize_llm()
         self.session = None
         self.memory = self._initialize_memory()
+        # Initialize the reranker
+        self.reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-12-v2')
         
     async def _ensure_session(self):
         """Ensure aiohttp session is initialized"""
@@ -252,6 +256,40 @@ class DentalChatbot:
         
         return condensed_query
 
+    def _rerank_results(self, query: str, results: List[Tuple[Document, float]], top_k: int = None) -> List[Tuple[Document, float]]:
+        """
+        Rerank the retrieved documents using a cross-encoder model.
+        
+        Args:
+            query: The search query
+            results: List of (document, score) tuples from initial retrieval
+            top_k: Number of documents to return after reranking
+            
+        Returns:
+            List[Tuple[Document, float]]: Reranked documents with scores
+        """
+        if not results:
+            return results
+            
+        # Prepare document-query pairs for reranking
+        pairs = [(query, doc.page_content) for doc, _ in results]
+        
+        # Get reranking scores
+        rerank_scores = self.reranker.predict(pairs)
+        
+        # Combine documents with their new scores, the higher the score, the more relevant the document
+        reranked_results = list(zip([r[0] for r in results], rerank_scores))
+        
+        reranked_results.sort(key=lambda x: x[1], reverse=True)
+        
+        reranked_results = [result for result in reranked_results if result[1] >= 0]
+        
+        # Return top_k results if specified
+        if top_k is not None:
+            reranked_results = reranked_results[:top_k]
+            
+        return reranked_results
+
     async def get_response(
         self, 
         query: str, 
@@ -298,11 +336,16 @@ class DentalChatbot:
                     chat_history=chat_history
                 )
                 
-                sources = [{"source": "Appointments API", "distance_score": 1.0}]
+                sources = [{"source": "Appointments API", "distance_score": 0.0}]
             else:
-                # Handle general query using existing logic with condensed query
-                results = self.vector_store.similarity_search_with_score(condensed_query, k=k)
-                context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
+                # Retrieve initial candidates with higher k for reranking
+                initial_k = min(k * 3, 30)
+                results = self.vector_store.similarity_search_with_score(condensed_query, k=initial_k)
+                
+                # Rerank results
+                reranked_results = self._rerank_results(condensed_query, results, top_k=k)
+                
+                context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in reranked_results])
                 
                 # Format the prompt using the template
                 prompt_value = self.prompt_template.format_messages(
@@ -318,7 +361,7 @@ class DentalChatbot:
                         "page": doc.metadata.get("page"),
                         "distance_score": float(score)
                     }
-                    for doc, score in results
+                    for doc, score in reranked_results
                 ]
 
             if streaming:
@@ -331,14 +374,14 @@ class DentalChatbot:
                                 text = text.replace("\\n", "\n")
                                 buffer += text
                                 logger.debug(f"Streaming content: {text}")
-                                # Simple consistent delay
-                                if text.strip():  # Only delay for non-empty tokens
+                                
+                                if text.strip():  
                                     await asyncio.sleep(0.02)
                                 yield text
                             elif isinstance(chunk, str):
                                 buffer += chunk
                                 logger.debug(f"Streaming string: {chunk}")
-                                if chunk.strip():  # Only delay for non-empty tokens
+                                if chunk.strip():  
                                     await asyncio.sleep(0.02)
                                 yield chunk
                         

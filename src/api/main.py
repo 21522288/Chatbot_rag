@@ -70,9 +70,8 @@ async def generate_streaming_response(query: str, k: int = DEFAULT_K_RETRIEVED_D
         async for token in token_generator:
             response_text += token
             yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
-        
-        # After streaming is complete, get sources
-        response, sources = await chatbot.get_response(query, k=k, streaming=False)
+            
+        sources = chatbot.get_sources(query, k=k)
         
         # Send the complete response and sources
         yield f"data: {json.dumps({'type': 'complete', 'content': response_text})}\n\n"
@@ -151,11 +150,6 @@ async def get_sources(request: ChatRequest) -> List[SourceResponse]:
     except Exception as e:
         logger.error(f"Error in sources endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/health")
-async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy"}
 
 # Mount static files after all API routes are defined
 app.mount("/", StaticFiles(directory="static", html=True), name="static") 
